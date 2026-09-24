@@ -42,6 +42,8 @@ class RolloutBuffer:
         self.hidden_dim = hidden_dim
         self.device = device
         self.store_aod_fields = store_aod_fields
+        self.ptr = 0
+        self.initial_hidden = None
 
         self.obs = torch.zeros(n_steps, n_envs, *obs_shape, dtype=torch.float32)
         self.actions = torch.zeros(n_steps, n_envs, dtype=torch.long)
@@ -65,6 +67,34 @@ class RolloutBuffer:
             self.o_hat = None
 
         self.ptr = 0
+
+    def set_initial_hidden(self, hidden):
+        """Store a detached CPU copy of the hidden state at rollout start."""
+        if hidden is None:
+            self.initial_hidden = None
+
+        elif isinstance(hidden, tuple):
+            self.initial_hidden = tuple(
+                h.detach().cpu().clone() if h is not None else None
+                for h in hidden
+            )
+
+        else:
+            self.initial_hidden = hidden.detach().cpu().clone()
+
+
+    def _select_initial_hidden(self, idx):
+        """Select rollout-start hidden states for an environment minibatch."""
+        if self.initial_hidden is None:
+            return None
+
+        if isinstance(self.initial_hidden, tuple):
+            return tuple(
+                h[idx].to(self.device) if h is not None else None
+                for h in self.initial_hidden
+            )
+
+        return self.initial_hidden[idx].to(self.device)
 
     def add(
         self,
@@ -98,25 +128,37 @@ class RolloutBuffer:
 
         self.ptr += 1
 
-    def compute_returns_and_advantages(self, last_value, last_done, gamma, gae_lambda):
+    def compute_returns_and_advantages(
+        self, last_value, last_done, gamma, gae_lambda
+    ):
         last_value = last_value.detach().cpu()
-        last_done = torch.as_tensor(last_done, dtype=torch.float32)
 
         gae = torch.zeros(self.n_envs, dtype=torch.float32)
+
         for t in reversed(range(self.n_steps)):
             if t == self.n_steps - 1:
-                next_non_terminal = 1.0 - last_done
                 next_value = last_value
             else:
-                next_non_terminal = 1.0 - self.dones[t + 1]
                 next_value = self.values[t + 1]
+
+            # dones[t] tells us whether the transition from
+            # obs[t] -> next_obs ended the episode.
+            next_non_terminal = 1.0 - self.dones[t]
 
             delta = (
                 self.rewards[t]
                 + gamma * next_value * next_non_terminal
                 - self.values[t]
             )
-            gae = delta + gamma * gae_lambda * next_non_terminal * gae
+
+            gae = (
+                delta
+                + gamma
+                * gae_lambda
+                * next_non_terminal
+                * gae
+            )
+
             self.advantages[t] = gae
 
         self.returns = self.advantages + self.values
@@ -154,6 +196,8 @@ class RolloutBuffer:
                 "dones": self.dones[:, idx].to(self.device),
             }
 
+            batch["initial_hidden"] = self._select_initial_hidden(idx)
+
             if self.store_aod_fields:
                 batch.update({
                     "omegas": self.omegas[:, idx].to(self.device),
@@ -181,7 +225,7 @@ class PPOTrainer:
             self._base_model.parameters(), lr=args.lr, eps=1e-5
         )
 
-        self.obs_shape = envs.observation_space.shape
+        self.obs_shape = envs.single_observation_space.shape
         self.hidden_dim = getattr(
             self._base_model, "hidden_dim", args.hidden_dim
         )
@@ -249,6 +293,19 @@ class PPOTrainer:
             hidden = hidden.clone()
         hidden[done_t] = 0.0
         return hidden
+    
+    def _select_hidden_env(self, hidden, i):
+        """Select the hidden state for one environment, preserving batch dim."""
+        if hidden is None:
+            return None
+
+        if isinstance(hidden, tuple):
+            return tuple(
+                h[i:i + 1] if h is not None else None
+                for h in hidden
+            )
+
+        return hidden[i:i + 1]
 
     def _update_lr(self, update):
         """Linear learning rate annealing (optional, controlled by args.anneal_lr)."""
@@ -288,6 +345,10 @@ class PPOTrainer:
             self.model.eval()
             self.buffer.reset()
 
+            # Store the exact recurrent state used at the beginning
+            # of this rollout so PPO can reconstruct the same context.
+            self.buffer.set_initial_hidden(hidden)
+
             # ── Rollout phase ──
             for _ in range(args.n_steps):
                 with torch.no_grad():
@@ -297,10 +358,55 @@ class PPOTrainer:
                     action = dist.sample()
                     log_prob = dist.log_prob(action)
 
-                next_obs, reward, terminated, truncated, _ = self.envs.step(
+                # next_obs, reward, terminated, truncated, _ = self.envs.step(
+                #     action.cpu().numpy()
+                # )
+                # done = (terminated | truncated).astype(np.float32)
+                next_obs, reward, terminated, truncated, infos = self.envs.step(
                     action.cpu().numpy()
                 )
+                env_reward = reward.copy()
+
                 done = (terminated | truncated).astype(np.float32)
+
+                # Time-limit truncation is an episode boundary for recurrent state,
+                # but not a true terminal state for value estimation.
+                #
+                # With SAME_STEP autoreset, next_obs contains the reset observation.
+                # The actual final observation is provided in infos["final_obs"].
+                if np.any(truncated):
+                    final_obs = infos.get("final_obs", None)
+
+                    if final_obs is None:
+                        raise RuntimeError(
+                            "Truncated environment did not provide infos['final_obs']. "
+                            "Check that the vector environment uses AutoresetMode.SAME_STEP."
+                        )
+
+                    for i in np.flatnonzero(truncated):
+                        terminal_obs = final_obs[i]
+
+                        if terminal_obs is None:
+                            raise RuntimeError(
+                                f"Missing final_obs for truncated environment {i}."
+                            )
+
+                        terminal_obs_t = torch.as_tensor(
+                            terminal_obs,
+                            dtype=torch.float32,
+                            device=self.device,
+                        ).unsqueeze(0)
+
+                        # Use the recurrent state produced after processing obs_t.
+                        terminal_hidden = self._select_hidden_env(hidden, i)
+
+                        with torch.no_grad():
+                            _, terminal_value, _, _ = self.model(
+                                terminal_obs_t,
+                                terminal_hidden,
+                            )
+
+                        reward[i] += args.gamma * terminal_value.item()
 
                 # Extract AoD info (None for non-AoD models)
                 omega = info.get("omega")
@@ -321,7 +427,7 @@ class PPOTrainer:
                     o_hat=o_hat,
                 )
 
-                episode_returns += reward
+                episode_returns += env_reward
                 for i, d in enumerate(done):
                     if d:
                         completed_returns.append(float(episode_returns[i]))
@@ -407,9 +513,19 @@ class PPOTrainer:
 
                 T = obs_seq.shape[0]
                 batch_envs = obs_seq.shape[1]
-                hidden = self._base_model.init_hidden(
-                    batch_envs, self.device
-                )
+
+                # print("\n=== SEQUENCE BATCH DEBUG ===")
+                # print("obs_seq:", tuple(obs_seq.shape))
+                # print("actions_seq:", tuple(actions_seq.shape))
+                # print("dones_seq:", tuple(dones_seq.shape))
+                # print("T:", T)
+                # print("batch_envs:", batch_envs)
+
+                # hidden = self._base_model.init_hidden(
+                #     batch_envs, self.device
+                # )
+
+                hidden = batch["initial_hidden"]
 
                 l_rl_acc = 0.0
                 l_v_acc = 0.0
@@ -424,8 +540,7 @@ class PPOTrainer:
 
                 for t in range(T):
                     # Reset hidden for environments that terminated at the
-                    # previous timestep, so the model sees a clean state
-                    # at the start of a new episode.
+                    # previous timestep.
                     if t > 0:
                         hidden = self._reset_hidden_for_done(
                             hidden,
@@ -436,8 +551,8 @@ class PPOTrainer:
                         obs_seq[t], hidden
                     )
 
-                    # Detach hidden state: no TBPTT (standard PPO)
-                    hidden = self._detach_hidden(hidden)
+                    # Detach hidden state: no TBPTT
+                    # hidden = self._detach_hidden(hidden)
 
                     dist = torch.distributions.Categorical(logits=logits)
                     log_probs = dist.log_prob(actions_seq[t])

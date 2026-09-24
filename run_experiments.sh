@@ -20,8 +20,8 @@ fi
 
 COMMON="--total_steps 2000000 --n_envs 8 --n_steps 128 --n_epochs 4 \
         --batch_size 256 --lr 3e-4 --hidden_dim 128 --n_heads 4 \
-        --seq_len 16 --log_interval 10 --save_interval 100"
-
+        --seq_len 16 --log_interval 10 --save_interval 100 \
+        --results_dir /home/san/AOD/results"
 run() {
     if $DRY_RUN; then
         echo "  python train.py $@"
@@ -106,5 +106,5 @@ echo "Corruption:      30 runs (2 models × 3 levels × 5 seeds)"
 echo "Total:          125 runs"
 echo ""
 echo "Next steps:"
-echo "  1. python save_trajectory.py --checkpoint results/aod_MemoryS7_seed0/model_final.pt"
+echo "  1. python save_trajectory.py --checkpoint /home/san/AOD/results/aod_MemoryS7_seed0/model_final.pt"
 echo "  2. python analyze.py"

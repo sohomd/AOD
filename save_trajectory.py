@@ -1,10 +1,10 @@
 """
-save_trajectory.py — Record a trajectory from a trained AoD agent.
-Saves timesteps, surprise, and omega arrays for Figure 5.
+save_trajectory.py — Record trajectories from a trained AoD agent.
+Saves timestep, surprise, and omega arrays for Figure 5.
 
 Usage:
     python save_trajectory.py \
-        --checkpoint results/aod_MemoryS7_seed0/model_final.pt
+        --checkpoint /home/san/AOD/results/aod_MemoryS7_seed0/model_final.pt
 """
 
 import argparse
@@ -21,82 +21,220 @@ def main():
     parser = argparse.ArgumentParser(
         description="Record trajectory data from a trained AoD agent."
     )
-    parser.add_argument("--checkpoint", type=str, required=True,
-                        help="Path to model checkpoint")
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        required=True,
+        help="Path to model checkpoint",
+    )
     parser.add_argument("--env", type=str, default="MemoryS7")
     parser.add_argument("--hidden_dim", type=int, default=128)
     parser.add_argument("--n_heads", type=int, default=4)
     parser.add_argument("--seq_len", type=int, default=16)
-    parser.add_argument("--n_episodes", type=int, default=10,
-                        help="Number of episodes to record")
+    parser.add_argument(
+        "--n_episodes",
+        type=int,
+        default=10,
+        help="Number of episodes to record",
+    )
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if not os.path.isfile(args.checkpoint):
+        raise FileNotFoundError(
+            f"Checkpoint does not exist:\n{args.checkpoint}"
+        )
 
-    envs = make_env(args.env, n_envs=1, seed=args.seed)
-    obs_shape = envs.observation_space.shape
-    n_actions = envs.action_space.n
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu"
+    )
 
+    # --------------------------------------------------
+    # Environment
+    # --------------------------------------------------
+    # make_env returns a vector environment even when n_envs=1.
+    envs = make_env(
+        args.env,
+        n_envs=1,
+        seed=args.seed,
+    )
+
+    # IMPORTANT: use the spaces of ONE environment.
+    obs_shape = envs.single_observation_space.shape
+    n_actions = envs.single_action_space.n
+
+    print(f"Device: {device}")
+    print(f"Environment: {args.env}")
+    print(f"Observation shape: {obs_shape}")
+    print(f"Actions: {n_actions}")
+
+    # --------------------------------------------------
+    # Model
+    # --------------------------------------------------
     model = make_model(
-        "aod", obs_shape, n_actions,
+        "aod",
+        obs_shape,
+        n_actions,
         hidden_dim=args.hidden_dim,
         n_heads=args.n_heads,
         seq_len=args.seq_len,
     ).to(device)
 
-    checkpoint = torch.load(args.checkpoint, map_location=device)
+    checkpoint = torch.load(
+        args.checkpoint,
+        map_location=device,
+    )
+
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
 
+    # --------------------------------------------------
+    # Storage
+    # --------------------------------------------------
     all_timesteps = []
     all_surprises = []
     all_omegas = []
-    global_t = 0
+    all_episode_ids = []
 
-    obs, _ = envs.reset()
-    obs = torch.as_tensor(obs, dtype=torch.float32)
-    hidden = model.init_hidden(1, device)
+    global_t = 0
     episodes_done = 0
 
-    print(f"Recording {args.n_episodes} episodes from {args.checkpoint}...")
+    # --------------------------------------------------
+    # Initial state
+    # --------------------------------------------------
+    obs, _ = envs.reset(seed=args.seed)
 
+    obs = torch.as_tensor(
+        obs,
+        dtype=torch.float32,
+        device=device,
+    )
+
+    hidden = model.init_hidden(1, device)
+
+    print(
+        f"\nRecording {args.n_episodes} episodes "
+        f"from {args.checkpoint}..."
+    )
+
+    # --------------------------------------------------
+    # Rollout
+    # --------------------------------------------------
     while episodes_done < args.n_episodes:
-        with torch.no_grad():
-            logits, value, hidden, info = model(obs.to(device), hidden)
-            dist = torch.distributions.Categorical(logits=logits)
-            action = dist.sample()
 
+        with torch.no_grad():
+            logits, value, hidden, info = model(
+                obs,
+                hidden,
+            )
+
+            # Deterministic evaluation trajectory.
+            action = torch.argmax(
+                logits,
+                dim=-1,
+            )
+
+        # Save AoD quantities for this decision step.
         all_timesteps.append(global_t)
-        all_surprises.append(info["surprise"].item())
-        all_omegas.append(info["omega"].item())
+        all_surprises.append(
+            float(info["surprise"].item())
+        )
+        all_omegas.append(
+            float(info["omega"].item())
+        )
+        all_episode_ids.append(episodes_done)
+
         global_t += 1
 
-        next_obs, reward, terminated, truncated, _ = envs.step(
+        # --------------------------------------------------
+        # Environment step
+        # --------------------------------------------------
+        next_obs, reward, terminated, truncated, infos = envs.step(
             action.cpu().numpy()
         )
-        done = (terminated | truncated).any()
 
+        done = bool(
+            np.asarray(terminated | truncated).reshape(-1)[0]
+        )
+
+        # SAME_STEP vector autoreset returns the next episode's
+        # initial observation when the current episode ends.
         if done:
             episodes_done += 1
-            hidden = model.init_hidden(1, device)
 
-        obs = torch.as_tensor(next_obs, dtype=torch.float32)
+            print(
+                f"  Episode {episodes_done}/"
+                f"{args.n_episodes} complete "
+                f"at timestep {global_t}"
+            )
+
+            # Prevent recurrent/attention history from leaking
+            # across episode boundaries.
+            hidden = model.init_hidden(
+                1,
+                device,
+            )
+
+        obs = torch.as_tensor(
+            next_obs,
+            dtype=torch.float32,
+            device=device,
+        )
 
     envs.close()
 
-    save_dir = os.path.dirname(args.checkpoint)
-    save_path = os.path.join(save_dir, "trajectory.npz")
+    # --------------------------------------------------
+    # Save trajectory
+    # --------------------------------------------------
+    save_dir = os.path.dirname(
+        os.path.abspath(args.checkpoint)
+    )
+
+    save_path = os.path.join(
+        save_dir,
+        "trajectory.npz",
+    )
+
     np.savez(
         save_path,
-        timesteps=np.array(all_timesteps),
-        surprise=np.array(all_surprises),
-        omega=np.array(all_omegas),
+        timesteps=np.asarray(
+            all_timesteps,
+            dtype=np.int64,
+        ),
+        episode=np.asarray(
+            all_episode_ids,
+            dtype=np.int64,
+        ),
+        surprise=np.asarray(
+            all_surprises,
+            dtype=np.float32,
+        ),
+        omega=np.asarray(
+            all_omegas,
+            dtype=np.float32,
+        ),
     )
-    print(f"Saved {len(all_timesteps)} timesteps to {save_path}")
-    print(f"  Episodes: {episodes_done}")
-    print(f"  Mean omega: {np.mean(all_omegas):.3f}")
-    print(f"  Mean surprise: {np.mean(all_surprises):.4f}")
+
+    omegas = np.asarray(all_omegas)
+    surprises = np.asarray(all_surprises)
+
+    print("\nTrajectory recording complete.")
+    print(
+        f"Saved {len(all_timesteps)} timesteps to:"
+    )
+    print(save_path)
+
+    print(f"\nEpisodes: {episodes_done}")
+    print(
+        f"Mean omega: {np.mean(omegas):.3f}"
+    )
+    print(
+        f"Attention-reliance reduction: "
+        f"{100.0 * (1.0 - np.mean(omegas)):.1f}%"
+    )
+    print(
+        f"Mean surprise: {np.mean(surprises):.4f}"
+    )
 
 
 if __name__ == "__main__":

@@ -199,8 +199,8 @@ def main():
         )
 
         try:
-            obs_shape = envs.observation_space.shape
-            n_actions = envs.action_space.n
+            obs_shape = envs.single_observation_space.shape
+            n_actions = envs.single_action_space.n
             print(f"Obs shape: {obs_shape} | Actions: {n_actions}")
 
             # Model

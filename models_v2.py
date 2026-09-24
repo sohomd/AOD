@@ -32,37 +32,42 @@ import torch.nn as nn
 
 class ObsEncoder(nn.Module):
     """
-    Encodes MiniGrid observations (H, W, C) into a hidden vector.
+    Encodes MiniGrid symbolic observations (H, W, 3) into a hidden vector.
 
-    Note:
-        MiniGrid default observations are symbolic integer encodings, not RGB
-        images. We therefore do NOT divide by 255 by default. Set normalize_by
-        to 255.0 if using an RGB observation wrapper.
+    MiniGrid observations are categorical triples [object_idx, color_idx, state]
+    per cell, NOT magnitudes. Feeding raw integers makes the network treat
+    e.g. "key(8)" as 4x "wall(2)", which is meaningless. We therefore one-hot
+    encode each of the three channels and apply an MLP. This is the standard,
+    proven encoding for MiniGrid and is required for goal-directed learning.
     """
+
+    NUM_OBJECTS = 11   # object_idx: 0..10
+    NUM_COLORS = 6     # color_idx: 0..5
+    NUM_STATES = 3     # state: 0..2
 
     def __init__(self, obs_shape, hidden_dim, normalize_by=None):
         super().__init__()
         h, w, c = obs_shape
-        self.normalize_by = normalize_by
+        assert c == 3, f"Expected 3 channels, got {c}"
+        self.h, self.w = h, w
+        self.cell_dim = self.NUM_OBJECTS + self.NUM_COLORS + self.NUM_STATES
+        flat_dim = h * w * self.cell_dim
 
-        self.cnn = nn.Sequential(
-            nn.Conv2d(c, 16, kernel_size=2, stride=1, padding=0),
+        self.net = nn.Sequential(
+            nn.Linear(flat_dim, hidden_dim),
             nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=2, stride=1, padding=0),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=2, stride=1, padding=0),
-            nn.ReLU(),
-            nn.Flatten(),
         )
 
-        with torch.no_grad():
-            dummy = torch.zeros(1, c, h, w)
-            cnn_out = self.cnn(dummy).shape[1]
-
-        self.fc = nn.Sequential(
-            nn.Linear(cnn_out, hidden_dim),
-            nn.ReLU(),
-        )
+    def _one_hot(self, obs):
+        obj = obs[..., 0].long().clamp(0, self.NUM_OBJECTS - 1)
+        col = obs[..., 1].long().clamp(0, self.NUM_COLORS - 1)
+        sta = obs[..., 2].long().clamp(0, self.NUM_STATES - 1)
+        obj_oh = torch.nn.functional.one_hot(obj, self.NUM_OBJECTS).float()
+        col_oh = torch.nn.functional.one_hot(col, self.NUM_COLORS).float()
+        sta_oh = torch.nn.functional.one_hot(sta, self.NUM_STATES).float()
+        return torch.cat([obj_oh, col_oh, sta_oh], dim=-1)
 
     def forward(self, obs):
         """
@@ -72,78 +77,16 @@ class ObsEncoder(nn.Module):
             (B, D) or (B*T, D)
         """
         if obs.dim() == 4:
-            x = obs.permute(0, 3, 1, 2).float()
+            x = obs
         elif obs.dim() == 5:
-            x = obs.permute(0, 1, 4, 2, 3).float()
-            b, t = x.shape[:2]
-            x = x.reshape(b * t, *x.shape[2:])
+            b, t = obs.shape[:2]
+            x = obs.reshape(b * t, *obs.shape[2:])
         else:
             raise ValueError(f"Unexpected observation shape: {tuple(obs.shape)}")
 
-        if self.normalize_by is not None and self.normalize_by != 0:
-            x = x / self.normalize_by
-
-        x = self.cnn(x)
-        x = self.fc(x)
-        return x
-
-# class ObsEncoder(nn.Module):
-#     """
-#     Encodes MiniGrid symbolic observations (H, W, 3) into a hidden vector.
-
-#     MiniGrid observations are categorical triples [object_idx, color_idx, state]
-#     per cell, NOT magnitudes. Feeding raw integers makes the network treat
-#     e.g. "key(8)" as 4x "wall(2)", which is meaningless. We therefore one-hot
-#     encode each of the three channels and apply an MLP. This is the standard,
-#     proven encoding for MiniGrid and is required for goal-directed learning.
-#     """
-
-#     NUM_OBJECTS = 11   # object_idx: 0..10
-#     NUM_COLORS = 6     # color_idx: 0..5
-#     NUM_STATES = 3     # state: 0..2
-
-#     def __init__(self, obs_shape, hidden_dim, normalize_by=None):
-#         super().__init__()
-#         h, w, c = obs_shape
-#         assert c == 3, f"Expected 3 channels, got {c}"
-#         self.h, self.w = h, w
-#         self.cell_dim = self.NUM_OBJECTS + self.NUM_COLORS + self.NUM_STATES
-#         flat_dim = h * w * self.cell_dim
-
-#         self.net = nn.Sequential(
-#             nn.Linear(flat_dim, hidden_dim),
-#             nn.ReLU(),
-#             nn.Linear(hidden_dim, hidden_dim),
-#             nn.ReLU(),
-#         )
-
-#     def _one_hot(self, obs):
-#         obj = obs[..., 0].long().clamp(0, self.NUM_OBJECTS - 1)
-#         col = obs[..., 1].long().clamp(0, self.NUM_COLORS - 1)
-#         sta = obs[..., 2].long().clamp(0, self.NUM_STATES - 1)
-#         obj_oh = torch.nn.functional.one_hot(obj, self.NUM_OBJECTS).float()
-#         col_oh = torch.nn.functional.one_hot(col, self.NUM_COLORS).float()
-#         sta_oh = torch.nn.functional.one_hot(sta, self.NUM_STATES).float()
-#         return torch.cat([obj_oh, col_oh, sta_oh], dim=-1)
-
-#     def forward(self, obs):
-#         """
-#         Args:
-#             obs: (B, H, W, C) or (B, T, H, W, C)
-#         Returns:
-#             (B, D) or (B*T, D)
-#         """
-#         if obs.dim() == 4:
-#             x = obs
-#         elif obs.dim() == 5:
-#             b, t = obs.shape[:2]
-#             x = obs.reshape(b * t, *obs.shape[2:])
-#         else:
-#             raise ValueError(f"Unexpected observation shape: {tuple(obs.shape)}")
-
-#         x = self._one_hot(x)
-#         x = x.reshape(x.shape[0], -1)
-#         return self.net(x)
+        x = self._one_hot(x)
+        x = x.reshape(x.shape[0], -1)
+        return self.net(x)
 
 
 # ─────────────────────────────────────────────
@@ -294,10 +237,8 @@ class TransformerPolicy(nn.Module):
 
         # Shift history buffer and append new encoding.
         # Note: roll returns a new tensor; the original hidden is not mutated.
-        hidden = torch.cat(
-            [hidden[:, 1:, :], x.unsqueeze(1)],
-            dim=1
-        )
+        hidden = hidden.roll(shifts=-1, dims=1)
+        hidden[:, -1, :] = x
 
         t = hidden.shape[1]
         pos = torch.arange(t, device=x.device)
@@ -367,7 +308,7 @@ class SurpriseSignal(nn.Module):
 
         # Squared L2 prediction error (detached: no gradient through o_hat_prev)
         diff = o_t - o_hat_prev.detach()
-        s_t = (diff * diff).mean(dim=-1, keepdim=True)  # (B, 1)
+        s_t = (diff * diff).sum(dim=-1, keepdim=True)  # (B, 1)
         s_t_raw = s_t.squeeze(-1).detach()
 
         # Update running statistics for normalization
@@ -379,7 +320,7 @@ class SurpriseSignal(nn.Module):
                 if not self._initialized:
                     # First batch: initialize directly for fast warmup
                     self.running_mean.copy_(batch_mean)
-                    self.running_var.copy_(batch_var.clamp_min(1e-6))
+                    self.running_var.copy_(batch_var.clamp_min(1e-8))
                     self._initialized.fill_(True)
                 else:
                     self.running_mean.mul_(1 - self.momentum).add_(
@@ -390,12 +331,8 @@ class SurpriseSignal(nn.Module):
                     )
 
         s_t_norm = (s_t - self.running_mean) / (
-            torch.sqrt(self.running_var.clamp_min(1e-6)) + 1e-8
+            torch.sqrt(self.running_var) + 1e-8
         )
-
-        # Prevent extreme normalized surprise values from saturating the gate.
-        s_t_norm = torch.clamp(s_t_norm, -5.0, 5.0)
-
         return s_t_norm, o_hat_next, s_t_raw
 
 
@@ -516,10 +453,8 @@ class AoDPolicy(nn.Module):
         s_norm, o_hat_next, s_raw = self.surprise(m_t, x_t, o_hat_prev)
 
         # 4. Update attention history and compute attention branch
-        hist_buf = torch.cat(
-            [hist_buf[:, 1:, :], x_t.unsqueeze(1)],
-            dim=1
-        )
+        hist_buf = hist_buf.roll(shifts=-1, dims=1)
+        hist_buf[:, -1, :] = x_t
         z_attn = self._compute_attention_branch(hist_buf)
 
         # 5. Gate

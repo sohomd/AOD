@@ -5,7 +5,7 @@ and optional observation corruption.
 
 import numpy as np
 import gymnasium as gym
-from gymnasium.vector import SyncVectorEnv, AsyncVectorEnv
+from gymnasium.vector import SyncVectorEnv, AsyncVectorEnv, AutoresetMode
 
 
 class ObservationCorruption(gym.ObservationWrapper):
@@ -45,22 +45,25 @@ class FlattenObsWrapper(gym.ObservationWrapper):
 
     def __init__(self, env):
         super().__init__(env)
+
         if not isinstance(env.observation_space, gym.spaces.Dict):
             raise TypeError(
                 f"Expected Dict observation space, got {type(env.observation_space)}. "
                 f"Is this a MiniGrid environment?"
             )
-        if "image" not in env.observation_space:
+
+        if "image" not in env.observation_space.spaces:
             raise KeyError(
                 "MiniGrid observation space does not contain 'image' key. "
-                f"Available keys: {list(env.observation_space.keys())}"
+                f"Available keys: {list(env.observation_space.spaces.keys())}"
             )
-        self.observation_space = env.observation_space["image"]
+
+        self.observation_space = env.observation_space.spaces["image"]
 
     def observation(self, obs):
         if isinstance(obs, dict):
             return obs["image"]
-        return obs  # Already extracted by a prior wrapper
+        return obs
 
 
 # Mapping from short names used in configs/CLI to Gymnasium environment IDs.
@@ -133,4 +136,8 @@ def make_env(env_name, n_envs, seed, corruption_p=0.0, use_async=False):
         for i in range(n_envs)
     ]
     vec_cls = AsyncVectorEnv if use_async else SyncVectorEnv
-    return vec_cls(fns)
+
+    return vec_cls(
+        fns,
+        autoreset_mode=AutoresetMode.SAME_STEP,
+    )
