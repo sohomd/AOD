@@ -42,9 +42,9 @@ aod/
 └── requirements.txt
 ```
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training1.png" width="32%" alt="Training 1" />
-  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training2.png" width="32%" alt="Training 2" />
-  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training3.png" width="32%" alt="Training 3" />
+  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training1.png" width="32%" alt="MemoryS7 Training" />
+  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training2.png" width="32%" alt="DoorKey Training" />
+  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training3.png" width="32%" alt="DynamicObstacles Training" />
 </p>
 ## Models
 
