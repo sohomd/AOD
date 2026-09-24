@@ -1,6 +1,6 @@
 # Attention-on-Demand (AoD)
 ## Surprise-Driven Selective Computation in Reinforcement Learning
-
+![Architecture Overview](https://raw.githubusercontent.com/sohomd/AOD/asset/Arch.png)
 ---
 
 ## Setup
