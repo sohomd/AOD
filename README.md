@@ -41,7 +41,11 @@ aod/
 ├── run_experiments.sh# Full experiment sweep
 └── requirements.txt
 ```
-![Architecture Overview](https://raw.githubusercontent.com/sohomd/AOD/asset/training.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training1.png" width="32%" alt="Training 1" />
+  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training2.png" width="32%" alt="Training 2" />
+  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training3.png" width="32%" alt="Training 3" />
+</p>
 ## Models
 
 | Model | Description |
