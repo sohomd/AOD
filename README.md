@@ -2,7 +2,7 @@
 
 ## Surprise-Conditioned Attention Reliance in Reinforcement Learning
 
-![Architecture Overview](https://raw.githubusercontent.com/sohomd/AOD/asset/Arch.png)
+![Architecture Overview](./Arch.png)
 
 > **Naming note.** AoD conditions how much the policy relies on the attention
 > branch on a surprise signal. Both recurrent and attention branches execute at
@@ -121,9 +121,9 @@ bash run_experiments.sh
 python analyze.py
 ```
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training1.png" width="32%" alt="MemoryS7 Training" />
-  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training2.png" width="32%" alt="DoorKey Training" />
-  <img src="https://raw.githubusercontent.com/sohomd/AOD/asset/training3.png" width="32%" alt="DynamicObstacles Training" />
+  <img src="./training1.png" width="32%" alt="MemoryS7 Training" />
+  <img src="./training2.png" width="32%" alt="DoorKey Training" />
+  <img src="./training3.png" width="32%" alt="DynamicObstacles Training" />
 </p>
 ## Models and environments
 
