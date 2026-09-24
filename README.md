@@ -2,7 +2,7 @@
 
 ## Surprise-Conditioned Attention Reliance in Reinforcement Learning
 
-![Architecture Overview](assets/Arch.png)
+<img src="https://raw.githubusercontent.com/sohomd/AOD/asset/Arch.png" width="32%" alt="Architecture" />
 
 > **Naming note.** AoD conditions how much the policy relies on the attention
 > branch on a surprise signal. Both recurrent and attention branches execute at
