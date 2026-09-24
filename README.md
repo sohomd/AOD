@@ -98,7 +98,7 @@ These are separate from the settings used for the reported MemoryS7 table.
 python train.py --model aod --env MemoryS9 --seed 0 \
     --total_steps 2000000 --n_envs 64 --n_steps 512 --env_batch_size 16 \
     --lr 7e-4 --anneal_lr --ent_coef 0.05
-'''
+```
 
 To run another model, change `--model aod` to `mlp`, `gru`, `transformer`, or `fixed_mixture`. To run another MiniGrid task, change `--env MemoryS7` to `DoorKey`, `DynamicObstacles`, or another environment registered in `env_utils.py`. Change `--seed` for each run; use the same seed identities across models for paired comparisons.
 
