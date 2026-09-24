@@ -209,6 +209,5 @@ Before interpreting the repository as an exact reproduction of the manuscript, c
 1. MiniGrid encoding agrees with the manuscript's three-layer CNN description, or revise the manuscript if a different encoder generated the reported results.
 2. The released sweep uses the paper's PPO settings, model configurations, environment versions, masking rule, attention contexts, and matching seed identities.
 3. The prediction-error definition, gradient detachment, running normalization, and active auxiliary losses agree with the equations in the manuscript.
-4. Reported return, gate, and surprise statistics are regenerated from evaluation logs rather than illustrative training curves.
-
-For double-blind review, keep this README, repository metadata, figure URLs, and code comments free of author-identifying links or names. Add figures using paths hosted within the anonymous repository after confirming that those files are present.
+4. Reported return, gate, and surprise statistics are regenerated from evaluation logs.
+## Under Review ICLR 2027
