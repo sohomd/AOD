@@ -22,7 +22,7 @@ import time
 import numpy as np
 import torch
 
-from env_utils import make_env, ENV_MAP
+from env_utils import make_env, MINIGRID_MAP, TMAZE_MAP
 from models import make_model
 from ppo import PPOTrainer
 from logger import Logger
@@ -41,11 +41,8 @@ def parse_args():
     )
 
     # Environment
-    parser.add_argument(
-        "--env", type=str, default="MemoryS7",
-        choices=sorted(ENV_MAP.keys()),
-        help="MiniGrid environment",
-    )
+    parser.add_argument("--env", type=str, default="MemoryS7",
+                    help="Environment: MiniGrid short name, TMaze*, or popgym-* id")
     parser.add_argument(
         "--corruption_p", type=float, default=0.0,
         help="Observation dropout probability (0=none)",
