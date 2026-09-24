@@ -83,8 +83,11 @@ The attention-penalty sweep uses `lambda_compute` values `0.001`, `0.005`, `0.01
 ### Paper settings (MemoryS7 example)
 
 ```bash
-python train.py --model aod --env MemoryS7 --seed 0 \
-    --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
+python train.py --model mlp --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
+python train.py --model gru --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
+python train.py --odel transformer --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
+python train.py --model fixed_mixture --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
+python train.py --model aod --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
 ```
 
 ### Additional working settings (MemoryS9 example)
@@ -96,11 +99,9 @@ python train.py --model aod --env MemoryS9 --seed 0 \
     --total_steps 2000000 --n_envs 64 --n_steps 512 --env_batch_size 16 \
     --lr 7e-4 --anneal_lr --ent_coef 0.05
 
-python train.py --model gru           --env MemoryS9 --seed 0 --total_steps 2000000 --n_envs 64 --n_steps 512 --env_batch_size 16 --lr 7e-4 --anneal_lr --ent_coef 0.05
-python train.py --model transformer   --env MemoryS9 --seed 0 --total_steps 2000000 --n_envs 64 --n_steps 512 --env_batch_size 16 --lr 7e-4 --anneal_lr --ent_coef 0.05
-python train.py --model mlp           --env MemoryS9 --seed 0 --total_steps 2000000 --n_envs 64 --n_steps 512 --env_batch_size 16 --lr 7e-4 --anneal_lr --ent_coef 0.05
-python train.py --model fixed_mixture --env MemoryS9 --seed 0 --total_steps 2000000 --n_envs 64 --n_steps 512 --env_batch_size 16 --lr 7e-4 --anneal_lr --ent_coef 0.05
-```
+To run another model, change `--model aod` to `mlp`, `gru`, `transformer`, or `fixed_mixture`. To run another MiniGrid task, change `--env MemoryS7` to `DoorKey`, `DynamicObstacles`, or another environment registered in `env_utils.py`. Change `--seed` for each run; use the same seed identities across models for paired comparisons.
+
+The same entry point also supports the locally registered T-Maze and POPGym tasks. For these, change `--env` to the registered task name and set `--seq_len` to the experiment's attention context. The paper uses `L + 5` for T-Maze corridor length `L` and `64` for POPGym. Check the action-space wrapper before running a POPGym task.
 
 ### T-Maze and POPGym examples
 
