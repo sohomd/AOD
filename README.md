@@ -189,16 +189,6 @@ For all four tasks, check the environment ID, action and observation spaces, enc
 
 Observation masking replaces the chosen observation input with zeros independently at a timestep with the specified probability. Confirm in `env_utils.py` whether masking is applied to image observations before encoding or to encoded vectors, and record that choice when reproducing results.
 
-## Architecture and reported metric
-
-Given observation encoding `x_t` and recurrent state `m_t`, AoD predicts the next encoding with `f_psi(m_t)`. Prediction error for the current step compares `x_t` with the prediction made from `m_{t-1}`. A sigmoid gate receives the current encoding, updated recurrent state, and normalized surprise; its weight `omega_t` fuses recurrent and attention representations:
-
-```text
-z_t = omega_t * z_t_attn + (1 - omega_t) * z_t_rec
-```
-
-For the default MemoryS7 evaluation, the manuscript reports mean gate activation `E[omega_t] = 0.646`, or `35.4%` lower *representational attention reliance* relative to a unit-weight full-attention reference. This statistic does not imply a `35.4%` reduction in FLOPs, latency, or energy.
-
 The manuscript's stated objective combines PPO, a next-latent prediction loss, and an attention-reliance penalty. If the implementation enables an additional gate-entropy term (`beta_gate`) for the reported runs, document its value and add the term to the manuscript objective; otherwise disable it for reproduction and label it an optional experiment.
 
 ## Under Review ICLR 2027
