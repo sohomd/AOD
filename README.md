@@ -160,6 +160,18 @@ python train.py --model aod --env TMaze20 --seed 0 --seq_len 25
 ```
 
 Use the other environment names actually registered in `env_utils.py` for the longer corridors; do not substitute `TMaze20` for `L = 50, 100, 250, 500`. Also confirm that the local T-Maze reward and termination rules match the manuscript's chance and maximum returns. The paper's gate-at-cue and gate-at-junction observations require time-indexed evaluation logs and cannot be regenerated from aggregate returns alone.
+### Passive T-Maze: Surprise and Gate Dynamics
+
+![Surprise and gate dynamics on Passive T-Maze](Figures/tmaze_surprise_gate.png)
+
+Prediction surprise (top) and attention gate activation (bottom) across the
+500-step Passive T-Maze horizon. Curves show means across five independently
+trained seeds, using one evaluation episode per seed; shaded bands indicate
+sample standard deviation across seeds. Attention weighting is higher at cue
+presentation and the decision junction and lower during corridor traversal.
+The initial peak may also reflect recurrent-state initialization. These
+trajectories illustrate an association between surprise and attention
+weighting; both branches execute at every timestep.
 
 ### POPGym
 
