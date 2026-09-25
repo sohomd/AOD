@@ -166,7 +166,7 @@ Use the other environment names actually registered in `env_utils.py` for the lo
 
 Prediction surprise (top) and attention gate activation (bottom) across the 500-step Passive T-Maze horizon. Curves show means across five independently trained seeds, using one evaluation episode per seed; shaded bands indicate sample standard deviation across seeds. Attention weighting is higher at cue presentation and the decision junction and lower during corridor traversal. The initial peak may also reflect recurrent-state initialization. These trajectories illustrate an association between surprise and attention weighting; both branches execute at every timestep.
 
-```markdown
+
 ### Performance Across Random Seeds
 
 Performance across five random seeds for GRU, Transformer, and the proposed Attention-on-Demand (AoD) model. Results report evaluation return for each seed together with the mean and sample standard deviation across seeds.
@@ -181,7 +181,7 @@ Performance across five random seeds for GRU, Transformer, and the proposed Atte
 | **Mean ± sample SD** | **0.51 ± 0.04** | **0.92 ± 0.05** | **0.88 ± 0.05** |
 
 Across five random seeds, AoD achieves a mean return of **0.88 ± 0.05**, substantially exceeding the GRU baseline (**0.51 ± 0.04**) while approaching Transformer performance (**0.92 ± 0.05**). The consistent behavior across seeds indicates that AoD's performance advantage over the recurrent baseline is not attributable to a single favorable initialization.
-```
+
 
 ### POPGym
 
