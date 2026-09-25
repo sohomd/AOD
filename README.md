@@ -189,6 +189,4 @@ For all four tasks, check the environment ID, action and observation spaces, enc
 
 Observation masking replaces the chosen observation input with zeros independently at a timestep with the specified probability. Confirm in `env_utils.py` whether masking is applied to image observations before encoding or to encoded vectors, and record that choice when reproducing results.
 
-The manuscript's stated objective combines PPO, a next-latent prediction loss, and an attention-reliance penalty. If the implementation enables an additional gate-entropy term (`beta_gate`) for the reported runs, document its value and add the term to the manuscript objective; otherwise disable it for reproduction and label it an optional experiment.
-
 ## Under Review ICLR 2027
