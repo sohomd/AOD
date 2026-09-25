@@ -201,13 +201,4 @@ For the default MemoryS7 evaluation, the manuscript reports mean gate activation
 
 The manuscript's stated objective combines PPO, a next-latent prediction loss, and an attention-reliance penalty. If the implementation enables an additional gate-entropy term (`beta_gate`) for the reported runs, document its value and add the term to the manuscript objective; otherwise disable it for reproduction and label it an optional experiment.
 
-
-## Reproducibility checks
-
-Before interpreting the repository as an exact reproduction of the manuscript, confirm from the released code and run logs that:
-
-1. MiniGrid encoding agrees with the manuscript's three-layer CNN description, or revise the manuscript if a different encoder generated the reported results.
-2. The released sweep uses the paper's PPO settings, model configurations, environment versions, masking rule, attention contexts, and matching seed identities.
-3. The prediction-error definition, gradient detachment, running normalization, and active auxiliary losses agree with the equations in the manuscript.
-4. Reported return, gate, and surprise statistics are regenerated from evaluation logs.
 ## Under Review ICLR 2027
