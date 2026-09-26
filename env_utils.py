@@ -72,9 +72,8 @@ MINIGRID_MAP = {
 
 # T-Maze short-name -> corridor length (uses local tmaze_env.py).
 TMAZE_MAP = {
-    "TMaze10": 10,
-    "TMaze20": 20,
-    "TMaze50": 50,
+    "TMaze10": 10, "TMaze20": 20, "TMaze50": 50,
+    "TMaze100": 100, "TMaze250": 250, "TMaze500": 500,
 }
 
 
