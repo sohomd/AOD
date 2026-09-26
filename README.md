@@ -17,6 +17,7 @@ models.py            Policy architectures
 ppo.py               PPO optimization and auxiliary losses
 env_utils.py         Environment creation and wrappers
 logger.py            Run logging
+tmaze_env.py         Local T-Maze environment
 analyze.py           Analysis and plotting
 run_experiments.sh   Experiment sweep
 requirements.txt     Python dependencies
