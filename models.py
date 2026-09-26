@@ -10,7 +10,7 @@ Models:
 
 Weight initialization:
     All modules use PyTorch defaults (Kaiming uniform for Linear, Xavier-like
-    for Conv2d). The gate network's final Sigmoid receives near-zero input at
+    for one hot encoder). The gate network's final Sigmoid receives near-zero input at
     init, producing ω ≈ 0.5 (equal recurrent/attention mix), which is a
     reasonable starting point.
 
