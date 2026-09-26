@@ -41,7 +41,6 @@ Optional environment families:
 ```bash
 pip install minigrid
 pip install popgym
-# T-Maze is bundled locally in tmaze_env.py.
 ```
 
 The policy has a categorical action head. Check the action space of each
