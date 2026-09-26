@@ -16,7 +16,6 @@ train.py             Training entry point
 models.py            Policy architectures
 ppo.py               PPO optimization and auxiliary losses
 env_utils.py         Environment creation and wrappers
-tmaze_env.py         Local T-Maze environment
 logger.py            Run logging
 analyze.py           Analysis and plotting
 run_experiments.sh   Experiment sweep
