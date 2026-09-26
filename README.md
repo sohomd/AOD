@@ -79,7 +79,7 @@ The attention-penalty sweep uses `lambda_compute` values `0.001`, `0.005`, `0.01
 ```bash
 python train.py --model mlp --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
 python train.py --model gru --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
-python train.py --odel transformer --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
+python train.py --model transformer --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
 python train.py --model fixed_mixture --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
 python train.py --model aod --env MemoryS7 --seed 0 --total_steps 2000000 --n_envs 8 --n_steps 128 --lr 3e-4 --seq_len 16
 ```
