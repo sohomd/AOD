@@ -4,9 +4,6 @@
 
 ![Architecture Overview](Arch.png)
 
-> **Naming note.** AoD conditions how much the policy relies on the attention
-> branch on a surprise signal. Both recurrent and attention branches execute at
-> every timestep; the gate controls representational mixing.
 
 
 
